@@ -28,7 +28,7 @@ def try_parse_date(date_str):
             return pd.to_datetime(date_str, format="%Y-%m-%d")
         except ValueError:
             # Try format "%d %m %Y" (assuming encountering non-standard format)
-            return pd.to_datetime(date_str, format="%d %m %Y")
+            return pd.to_datetime(date_str, format="%m %d %Y")
 
 
 
@@ -115,12 +115,6 @@ pca_data_a = pd.concat([pca_data_df, df["Date time"], df["Address"]], axis=1)
 
 
 
-
-
-
-
-
-
 """
 
 
@@ -191,7 +185,7 @@ A = pd.DataFrame(p.index)
 gmm = GaussianMixture(n_components=4)
 
 # אימון המודל על הדאטה
-gmm.fit(p)
+gmm.fit(p.dropna(axis=1, how='any'))
 
 # הדפסת ממוצעי הרכיבים
 print("ממוצעים:", gmm.means_)
@@ -205,3 +199,5 @@ for i in range(len(A)):
 A = A.assign(cluster_GMM4=pd.Series(gmm.predict(p)))
 
 type(pd.Series(gmm.predict(p)))
+df_with_missing_rows = p[p.isnull().any(axis=1)]
+cols_with_nan = p.columns[p.isnull().sum(axis=0) > 0]
