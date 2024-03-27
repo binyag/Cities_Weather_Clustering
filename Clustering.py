@@ -7,16 +7,14 @@ Created on Tue Mar 12 17:34:20 2024
 import numpy as np
 import pandas as pd
 import sklearn as sk
-from sklearn.cluster import KMeans ,DBSCAN
-from sklearn.preprocessing import MultiLabelBinarizer
+from sklearn.cluster import KMeans
 from sklearn.pipeline import Pipeline
-from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import  OneHotEncoder
-from tslearn.clustering import TimeSeriesKMeans
-from tslearn.preprocessing import TimeSeriesScalerMinMax  # Consider normalization
 from sklearn.decomposition import PCA
-from sklearn.mixture import GaussianMixture
 import matplotlib.pyplot as plt
+from sklearn.metrics import silhouette_score
+from sklearn.metrics import adjusted_rand_score
+import seaborn as sns
+from sklearn.compose import ColumnTransformer
 
 
 def try_parse_date(date_str):
@@ -32,105 +30,122 @@ def try_parse_date(date_str):
             return pd.to_datetime(date_str, format="%m %d %Y")
 
 
-data.columns
 
+
+# Load data from URL using requests (ensure data availability)
 
 url = "https://github.com/binyag/Cities_Weather_Clustering/raw/main/data.csv"
-# טען את הנתונים שלך
 data = pd.read_csv(url)
+# Create a copy of the DataFrame for data manipulation (avoid modifying original data)
 df = data.copy()
+# Clean 'Address' column by removing leading/trailing single quotes
 df['Address'] = df['Address'].str.strip("'")
 df.info()
 df["Conditions"].value_counts()
-# מילוי ערכים חסרים
+# Data Cleaning:
+# Fill missing values in "Snow Depth" with 0
 df["Snow Depth"].fillna(0, inplace=True)
+# Fill missing values in "Visibility" with the median value of the column
 df["Visibility"].fillna(df["Visibility"].median(), inplace=True)
+# Fill missing values in "Cloud Cover" with 0
 df["Cloud Cover"].fillna(0, inplace=True)
 
+# Fill missing values in "Wind Direction" with the median value per address group
+
 df['Wind Direction'].fillna(df.groupby('Address')['Wind Direction'].transform('median'), inplace=True)
-x_w = df['Wind Direction'].apply(lambda x: np.cos(x * np.pi / 180))
-y_w = df['Wind Direction'].apply(lambda x: np.sin(x * np.pi / 180))
-df['vector_Wind_Direction'] = list(zip(x_w, y_w))
-# החלת הפונקציה על עמודה "תאריך"
+# Feature Engineering:
+
+# Convert "Date time" column to datetime format (assuming valid format)
 df["Date time"] = df["Date time"].apply(try_parse_date)
-#df = df.set_index('Date time')
+# Drop the "Conditions" column as it might not be relevant for further analysis
+df.drop(columns=['Conditions'], inplace=True)
 
+# Define features for normalization (numerical columns)
 
-#df["Rain"] = np.where(df["Conditions"].str.contains("Rain"), 1, 0)
-#df["Partially cloudy"] = np.where(df["Conditions"].str.contains("Partially cloudy"), 1, 0)
-#df["Overcast"] = np.where(df["Conditions"].str.contains("Overcast"), 1, 0)
-df.drop(columns="Conditions", inplace=True)
-
-
-# בחר את התכונות הרלוונטיות
 features_N = [ 'Minimum Temperature', 'Maximum Temperature','Temperature','Dew Point', 'Relative Humidity','Wind Speed','Precipitation', 'Precipitation Cover','Snow Depth', 'Visibility', 'Cloud Cover', 'Sea Level Pressure']
 
-
+# Create a scaler for normalizing numerical features
 scaler = sk.preprocessing.StandardScaler()
-
-column_transformer = sk.compose.ColumnTransformer([
-    ('num', scaler, features_N)#,
-    #('cat', 'passthrough', ['Overcast',"Partially cloudy","Rain"])  # Add 'Overcast' with 'passthrough' transformer
-], remainder='drop')
-pipeline = Pipeline([
-    ('preprocess', column_transformer),
-])
+# Create a column transformer to scale only the specified features
+column_transformer = ColumnTransformer([('num', scaler, features_N)], remainder='drop')
+# Create a pipeline to combine preprocessing steps
+pipeline = Pipeline([('preprocess', column_transformer),])
+# Fit the pipeline to the data (learn normalization parameters)
 pipeline.fit(df)
 
 norm_data = pipeline.fit_transform(df)
 
-
 n_pca_data_a = pd.concat([pd.DataFrame(norm_data).iloc[:,:1], df["Date time"], df["Address"]], axis=1)
+# Create a pivot table from the combined data, with "Address" as rows and "Date time" as columns
+pivot_data_not_pca = pd.pivot(n_pca_data_a, index = 'Address',columns = "Date time" )
 
-p_n_pca = pd.pivot(n_pca_data_a, index = 'Address',columns = "Date time" )
+# Perform Principal Component Analysis (PCA) for dimensionality reduction
 
-
-# הגדרת צבעים אוטומטיים
-colors = plt.cm.tab20(np.arange(len(df['Address'].unique())))
-
-# לולאה לכל עמודה
-for col in df.columns:
-    # סינון נתונים לא זמינים
-    df_filtered = df
-
-    # יצירת גרף
-    plt.figure(figsize=(10, 6))
-    for i, address in enumerate(df_filtered['Address'].unique()):
-        df_address = df_filtered.loc[df_filtered['Address'] == address]
-        plt.plot(df_address['Date time'], df_address[col], color=colors[i], label=address)
-    
-    # הגדרות גרף
-    plt.title(col)
-    plt.xlabel('תאריך')
-    plt.ylabel(col)
-    plt.show()
-
-
-
-# 1. צור PCA
-
-pca = PCA(n_components=12 ,random_state=18)  # 2 רכיבים ראשיים
-
-# 2. התאם את ה-PCA לנתונים
-
+# Define a PCA object with 10 principal components and a random state for reproducibility
+pca = PCA(n_components=10 ,random_state=26)  
+# Fit the PCA model to the normalized data to learn the components
 pca.fit(norm_data)
-
-# 3. המר את הנתונים
-
+# Transform the normalized data using the fitted PCA model
 pca_data = pca.transform(norm_data)
-
-# 4. הדפס רכיבים ראשיים
-
+# Print the principal components (weightings for transformed features)
 print(pca.components_)
+# Print the total explained variance ratio (proportion of variance explained by the selected components)
+print(np.sum(pca.explained_variance_ratio_))
 
-# 5. הדפס וריאנס מוסבר
-
-print(pca.explained_variance_ratio_)
 sorted_pca_data = pca_data[df.index.values]
 pca_data_df = pd.DataFrame(pca_data)  # Create DataFrame from pca_data
 
 pca_data_a = pd.concat([pca_data_df, df["Date time"], df["Address"]], axis=1)
 
+pivot_data_pca = pd.pivot(pca_data_a, index = 'Address',columns = "Date time" )
+A = pd.DataFrame(pivot_data_pca.index)
+
+
+
+# Define the range of n_clusters values to evaluate
+n_clusters_range = np.arange(2, 15)
+kmeans = KMeans(n_clusters=1, random_state=26, init='k-means++')
+kmeans.fit(pivot_data_not_pca.dropna(axis=1, how='any'))
+
+inertia_o_n_pca = kmeans.inertia_
+alpha_k = 0.04
+# Dictionaries to store results
+silhouette_scores = {}
+inertia_scores = {}
+
+# Perform k-means clustering with k-means++ initialization for each n_clusters
+for n_clusters in n_clusters_range:
+    
+    kmeans = KMeans(n_clusters=n_clusters, random_state=26, init='k-means++')
+    kmeans.fit(pivot_data_not_pca.dropna(axis=1, how='any'))
+
+  # Calculate Silhouette score
+    silhouette_scores[n_clusters] = silhouette_score(pivot_data_not_pca.dropna(axis=1, how='any'), kmeans.labels_)
+
+  # Calculate inertia (within-cluster sum of squares)
+    inertia_scores[n_clusters] = kmeans.inertia_ / inertia_o_n_pca + alpha_k * n_clusters
+
+
+
+# Plot Silhouette scores
+plt.figure(figsize=(10, 6))
+plt.plot(n_clusters_range, silhouette_scores.values(), label='Silhouette Score')
+plt.xlabel('n_clusters')
+plt.ylabel('Silhouette Score')
+plt.title("Silhouette Score without PCA")
+
+plt.legend()
+plt.show()
+
+# Plot Scaled Inertia
+plt.figure(figsize=(10, 6))
+plt.plot(n_clusters_range, inertia_scores.values(), label='Scaled Inertia')
+plt.xlabel('n_clusters')
+plt.ylabel('Scaled Inertia')
+plt.title("Scaled Inertia without PCA")
+
+plt.legend()
+plt.show()
 
 
 
@@ -143,89 +158,167 @@ pca_data_a = pd.concat([pca_data_df, df["Date time"], df["Address"]], axis=1)
 
 
 
-"""
+kmeans = KMeans(n_clusters=1, random_state=26, init='k-means++')
+kmeans.fit(pivot_data_pca.dropna(axis=1, how='any'))
 
+inertia_o_pca = kmeans.inertia_
+# Dictionaries to store results
+silhouette_scores = {}
+inertia_scores = {}
 
-# הגדר את מספר הקבוצות
-n_clusters = 5
+# Perform k-means clustering with k-means++ initialization for each n_clusters
+for n_clusters in n_clusters_range:
+    
+    kmeans = KMeans(n_clusters=n_clusters, random_state=26, init='k-means++')
+    kmeans.fit(pivot_data_pca.dropna(axis=1, how='any'))
 
-# צור מודל KMeans
-kmeans = KMeans(n_clusters=n_clusters)
+  # Calculate Silhouette score
+    silhouette_scores[n_clusters] = silhouette_score(pivot_data_pca.dropna(axis=1, how='any'), kmeans.labels_)
 
-# התאם את המודל לנתונים
-kmeans.fit(norm_data)
-
-# צור תווית אשכול לכל עיר
-df["cluster"] = kmeans.labels_
-
-# הדפס את תוויות האשכול
-print(df["cluster"])
-
-# מצא ערים באותו אשכול
-for cluster_id in range(n_clusters):
-    cluster_cities = df[df["cluster"] == cluster_id]["Address"].tolist()
-    print(f"Cluster {cluster_id + 1}: {cluster_cities}")
+  # Calculate inertia (within-cluster sum of squares)
+    inertia_scores[n_clusters] = kmeans.inertia_ / inertia_o_pca + alpha_k * n_clusters
 
 
 
+# Plot Silhouette scores
+plt.figure(figsize=(10, 6))
+plt.plot(n_clusters_range, silhouette_scores.values(), label='Silhouette Score')
+plt.xlabel('n_clusters')
+plt.ylabel('Silhouette Score')
+plt.title("Silhouette Score with PCA")
+
+plt.legend()
+plt.show()
+
+# Plot Scaled Inertia
+plt.figure(figsize=(10, 6))
+plt.plot(n_clusters_range, inertia_scores.values(), label='Scaled Inertia')
+plt.xlabel('n_clusters')
+plt.ylabel('Scaled Inertia')
+plt.title("Scaled Inertia with PCA")
+
+plt.legend()
+plt.show()
+
+
+
+kmeans = KMeans(n_clusters=5, random_state=26, init='k-means++')
+kmeans.fit(pivot_data_not_pca.dropna(axis=1, how='any'))
+A ["clus_not_pca"] = kmeans.labels_
+
+kmeans = KMeans(n_clusters=5, random_state=26, init='k-means++')
+kmeans.fit(pivot_data_pca.dropna(axis=1, how='any'))
+A ["clus_pca"] = kmeans.labels_
+
+
+
+# Step 1: Group DataFrame df by 'Address' column and calculate mean temperature and humidity
+city_means = df.groupby('Address').agg({'Temperature': 'mean',
+                                        'Relative Humidity': 'mean',
+                                        "Wind Speed": "mean" ,
+                                        "Visibility":"mean" }).reset_index()
+
+# Step 2: Merge cluster labels from DataFrame A with calculated mean temperature and humidity
+merged_df = city_means.merge(A, left_on='Address', right_on='Address')
+
+# Step 3: Plot mean temperature and humidity for each cluster
+plt.figure(figsize=(12, 8))
+
+# Iterate over unique cluster labels
+for cluster_label in merged_df['clus_not_pca'].unique():
+    cluster_data = merged_df[merged_df['clus_not_pca'] == cluster_label]
+    plt.scatter(cluster_data['Temperature'], cluster_data['Relative Humidity'], label=f'Cluster {cluster_label}')
+
+plt.xlabel('Mean Temperature')
+plt.ylabel('Mean Relative Humidity')
+plt.title('Clustering of Cities based on Mean Temperature and Humidity')
+plt.legend()
+plt.grid(True)
+plt.show()
 
 
 
 
-# Select all numeric columns except 'Conditions' (categorical)
-# Consider feature selection or engineering based on domain knowledge
-numeric_columns = df.select_dtypes(include=[np.number]).columns[:-1]
-X = p.values
-
-# Preprocess the data (optional but recommended)
-scaler = TimeSeriesScalerMinMax()  # Consider min-max or standardization
-X = scaler.fit_transform(X)
-
-# Define the KMEANS model parameters
-n_clusters = 5  # Adjust based on your data and desired number of clusters
-metric = "dtw"  # Dynamic Time Warping for time series similarity
-max_iter = 50  # Maximum iterations for convergence
-random_state = 42  # Set a random state for reproducibility
-
-# Create and fit the KMEANS model
-model = TimeSeriesKMeans(n_clusters=n_clusters, metric=metric, max_iter=max_iter, random_state=random_state)
-model.fit(X)
-
-# Get the cluster labels for each time series
-cluster_labels = model.labels_
-
-# Optional: Add cluster labels as a new column in the DataFrame
-A['cluster'] = gmm.predict(p)
-
-# Analyze and interpret the clusters
-# Use domain knowledge and data exploration techniques
-# (e.g., visualizing clusters, calculating cluster centroids)
-
-print("Cluster labels:", cluster_labels)  # Example output
-"""
 
 
-p = pd.pivot(pca_data_a, index = 'Address',columns = "Date time" )
-A = pd.DataFrame(p.index)
+# Assuming clus_pca and clus_not_pca are the cluster labels obtained from PCA and non-PCA data
+ari = adjusted_rand_score(A['clus_pca'], A['clus_not_pca'])
+
+print(f"Adjusted Rand Index (ARI) between clusterings with PCA and without PCA: {ari}")
+
+
+cross_tab = pd.crosstab(A['clus_pca'], A['clus_not_pca'])
+print("Cross-tabulation table between clusterings with PCA and without PCA:")
+print(cross_tab)
+
+
+palette = sns.color_palette('Set2', n_colors=len(merged_df['clus_not_pca'].unique()))  # Create color palette
+
+plt.figure(figsize=(15, 9))
+
+# Plot clusters obtained without PCA (using a loop for individual color assignment)
+for i, cluster_label in enumerate(merged_df['clus_not_pca'].unique()):
+    cluster_data = merged_df[merged_df['clus_not_pca'] == cluster_label]
+    color = palette[i % len(palette)]  # Access color from palette cyclically
+
+    plt.scatter(cluster_data['Temperature'], cluster_data['Relative Humidity'],
+                label=f'Non-PCA Cluster {cluster_label}',
+                marker='s',
+                edgecolors=color,
+                linewidth=2.5, 
+                facecolors='none',
+                s=150)
+
+# Plot clusters obtained with PCA (optional, adjust marker style)
+for cluster_label in merged_df['clus_pca'].unique():
+    cluster_data = merged_df[merged_df['clus_pca'] == cluster_label]
+    plt.scatter(cluster_data['Temperature'], cluster_data['Relative Humidity'],
+                label=f'PCA Cluster {cluster_label}',
+                marker='o', # Use 'o' for circles (or choose another style)
+                s=50)  # Adjust marker size (optional)
+
+plt.xlabel('Mean Temperature')
+plt.ylabel('Mean Relative Humidity')
+plt.title('Comparison of Clustering Results with and without PCA')
+plt.legend()
+plt.grid(True)
+plt.show()
 
 
 
-gmm = GaussianMixture(n_components=4)
 
-# אימון המודל על הדאטה
-gmm.fit(p.dropna(axis=1, how='any'))
 
-# הדפסת ממוצעי הרכיבים
-print("ממוצעים:", gmm.means_)
 
-# הדפסת סטיית התקן של הרכיבים
-print("סטיית תקן:", gmm.covariances_)
 
-# הדפסת הסתברויות ההשתייכות לכל נקודה
-for i in range(len(A)):
-    print(A[i], gmm.predict(p)[i])
-A = A.assign(cluster_GMM4=pd.Series(gmm.predict(p)))
 
-type(pd.Series(gmm.predict(p)))
-df_with_missing_rows = p[p.isnull().any(axis=1)]
-cols_with_nan = p.columns[p.isnull().sum(axis=0) > 0]
+
+
+plt.figure(figsize=(15, 9))
+
+# Plot clusters obtained without PCA (using a loop for individual color assignment)
+for i, cluster_label in enumerate(merged_df['clus_not_pca'].unique()):
+    cluster_data = merged_df[merged_df['clus_not_pca'] == cluster_label]
+    color = palette[i % len(palette)]  # Access color from palette cyclically
+
+    plt.scatter(cluster_data["Visibility"], cluster_data["Wind Speed"],
+                label=f'Non-PCA Cluster {cluster_label}',
+                marker='s',
+                edgecolors=color,
+                linewidth=2.5, 
+                facecolors='none',
+                s=150)
+
+# Plot clusters obtained with PCA (optional, adjust marker style)
+for cluster_label in merged_df['clus_pca'].unique():
+    cluster_data = merged_df[merged_df['clus_pca'] == cluster_label]
+    plt.scatter(cluster_data["Visibility"], cluster_data["Wind Speed"],
+                label=f'PCA Cluster {cluster_label}',
+                marker='o', # Use 'o' for circles (or choose another style)
+                s=50)  # Adjust marker size (optional)
+
+plt.xlabel('Mean Visibility')
+plt.ylabel('Mean Wind Speed')
+plt.title('Comparison of Clustering Results with and without PCA')
+plt.legend()
+plt.grid(True)
+plt.show()
