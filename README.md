@@ -22,7 +22,8 @@ The analysis reveals that clustering cities based on weather patterns can provid
 The comparison between the clustering results with and without PCA showed a moderate level of agreement, with an ARI value of 0.4729, suggesting that while there are some discrepancies, there exists a substantial overlap between the two clustering approaches.
 
 Visual representations of the clustering results, such as scatter plots of mean temperature and relative humidity, offer intuitive insights into the grouping of cities based on weather similarities.
-![image](https://github.com/binyag/Cities_Weather_Clustering/assets/82894344/a4d726e7-f0c5-4571-a563-82f2da5001a4)
+![image](https://github.com/binyag/Cities_Weather_Clustering/assets/82894344/b75e24c9-38b5-4dcb-967a-f9f8180b3782)
+
 
 ## Future Work
 
