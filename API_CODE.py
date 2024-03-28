@@ -50,14 +50,13 @@ def get_historical_weather_data(api_key, city_list, start_date, end_date):
 
 
 # Example usage:
-api_key = "ZLYH4N5W66JUEGT3FG77HV67G"  # Your Visual Crossing Weather API key
+api_key = "api"  # Your Visual Crossing Weather API key
 city_list = ["Khartoum" ,'Jerusalem' ,"BEN GURION" ,"HAR KNAAN ZEFAT","KING HUSSEIN","BEER SHEVA CITY" , "SEDOM","AQABA KING HUSSEIN INTERNATIONAL"] # Example list of cities
 end_date = "2024-03-10"  # End date is today
 start_date = "2023-07-05"  # Start date is one year ago
 
 get_historical_weather_data(api_key, city_list, start_date, end_date)
 
-apis = ['ZLYH4N5W66JUEGT3FG77HV67G' , 'BTWS9XR57EUEYEVFVRRDWFFG4', ] 
 past_city = ['Ho Chi Minh City',  'Chandigarh', 'Bengaluru', 'Surat', 'Kanpur', 'Bangalore','Jakarta', 'Manila',  'Hyderabad', 'Pune', 'Kolkata', 'Ahmedabad', 'Jaipur', 'Lucknow', 'Chennai','Wellington', 'Christchurch', 'Perth', 'Adelaide', 'Brisbane', 'Gold Coast', 'Hobart', 'Canberra', 'Darwin', 'Birmingham', 'Liverpool', 'Glasgow', 'Edmonton', 'Calgary', 'Montreal', 'Quebec City', 'Halifax', 'Victoria','Marseille', 'Osaka', 'Moscow', 'Copenhagen', 'Dublin', 'Stockholm', 'Helsinki', 'Reykjavik', 'Warsaw', 'Lisbon', 'Edinburgh', 'Manchester', 'Bristol', 'Ottawa','Abuja','Accra','Algiers','Cape Town','Casablanca','Dar es Salaam',   'Johannesburg',         'Khartoum',         'Libreville',         'Windhoek', 'Auckland',         'Beijing',         'Cairo',             'Delhi',         'Hong Kong','Kuala Lumpur',         'Melbourne',         'Mumbai','Nairobi',         'Seattle',         'Seoul',         'Shanghai',         'Sydney',  'Taipei',         'Washington D.C.'"London", "Paris", "New York", "Tokyo", "Rome","Singapore", "Bangkok", "Dubai", "Istanbul", "Berlin", "Madrid","Vienna", "Prague","Budapest", "Amsterdam", "Barcelona", "Milan","Athens", "Los Angeles", "Chicago", "Toronto", "Vancouver", "Las Vegas","Rio de Janeiro", "Buenos Aires"]
 cities = []
 
