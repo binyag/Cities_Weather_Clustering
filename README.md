@@ -14,8 +14,9 @@ The primary methodology employed in this project is K-means clustering, a popula
 2. **Feature Engineering**: Principal Component Analysis (PCA) is applied to the preprocessed data to extract principal components representing the most significant variance, reducing the dimensionality of the dataset.
 3. **Clustering**: K-means clustering is performed on both the original data and the PCA-transformed data to group cities based on their weather patterns.
 4. **Evaluation**: The optimal number of clusters is determined using techniques like the elbow method and silhouette analysis. The clustering results obtained with and without PCA are compared using the Adjusted Rand Index (ARI) and visual representations.
-![image](https://github.com/binyag/Cities_Weather_Clustering/assets/82894344/32aa9b35-1ee4-4978-a742-9747c8538b6e)
-![image](https://github.com/binyag/Cities_Weather_Clustering/assets/82894344/2187fa46-9925-461d-919e-2ffbd4e41b48)
+![image](https://github.com/binyag/Cities_Weather_Clustering/assets/82894344/77f09cde-c9ff-4832-a6b6-7871b15c990e)
+![image](https://github.com/binyag/Cities_Weather_Clustering/assets/82894344/d45a6e57-23f6-4688-acb3-904d79ff7ee3)
+![image](https://github.com/binyag/Cities_Weather_Clustering/assets/82894344/ee582884-c958-4d3f-acf5-b7a69be57c92)
 
 ## Results
 
